@@ -2,5 +2,5 @@ This repo contains the cloud functions that run on our Firestore instance to kee
 
  - Firebase docs & examples: https://firebase.google.com/docs/functions/firestore-events
  - To deploy: `firebase deploy --only functions`
- - To view production logs: https://console.cloud.google.com/functions/details/us-central1/countTotalScore?env=gen1&project=sandbox-266120
+ - To view production logs: https://console.cloud.google.com/functions/details/us-central1/updateCounters?env=gen1&project=sandbox-266120
 

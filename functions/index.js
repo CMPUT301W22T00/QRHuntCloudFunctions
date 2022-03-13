@@ -2,37 +2,51 @@ const functions = require('firebase-functions');
 
 // The Firebase Admin SDK to access Firestore.
 const admin = require('firebase-admin');
+
 admin.initializeApp();
 
 // see also: https://firebase.google.com/docs/functions/database-events#handle_event_data
 
-exports.countTotalScore = functions.firestore.document('users/{userId}/qrCodes/{qrId}')
+exports.updateCounters = functions.firestore.document('users/{userId}/qrCodes/{qrId}')
   .onWrite(async (event, context) => {
     const {userId, qrId} = context.params;
+    const db = admin.firestore();
+
     const oldScore = event.before.exists ? event.before.data().score : 0; // if it's an insert, no previous value
     functions.logger.log(`Updating ${userId} with new QR ${qrId} old score: ${oldScore}`);
     const newScore = event.after.exists ? event.after.data().score : 0; // if it's a delete, no previous value
     functions.logger.log(`Updating ${userId} with new QR ${qrId} new score: ${newScore}`);
-    const delta = newScore - oldScore;
-    functions.logger.log(`Updating ${userId} with new QR ${qrId} new score∂: ${delta}`);
+    const scoreDelta = newScore - oldScore;
+    functions.logger.log(`Updating ${userId} with new QR ${qrId} new score∂: ${scoreDelta}`);
 
     let numScannedDelta;
     if (!event.after.exists) {
+      // deletion
       numScannedDelta = -1;
-    } else if (event.before.exists) {
+    } else if (!event.before.exists) {
+      // add
       numScannedDelta = 1;
+    } else {
+      // update
+      numScannedDelta = 0;
     }
+    functions.logger.log(`numScanned ∂: ${numScannedDelta}`);
 
 
     const userRef = db.collection("users").doc(userId);
     const qrGlobalRef = db.collection("qrCodes").doc(qrId);
+
+    functions.logger.log(`fetching doc references for user and qr`);
+
 
     await db.runTransaction(async (transaction) => {
       const userDoc = transaction.get(userRef);
       const qrDoc = transaction.get(qrGlobalRef);
 
       // assume the user exists
-      const newTotalScore = userDoc.data().totalScore + delta;
+      const newTotalScore = userDoc.data().totalScore + scoreDelta;
+      functions.logger.log(`new total score: ${newTotalScore}`);
+
       const isNewHighScore = newScore > userDoc.data().best.score;
 
       const newBest = {
