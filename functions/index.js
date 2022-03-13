@@ -53,7 +53,7 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
       // update → only works to update
       // set → works to update and create
       await Promise.all(
-        [transaction.set(userRef, {
+        [transaction.update(userRef, {
           totalScore: newTotalScore,
           best: newBest
         }),
@@ -116,7 +116,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
       // update → only works to update
       // set → works to update and create
       await Promise.all(
-        [transaction.set(userRef, {
+        [transaction.update(userRef, {
           totalScore: newTotalScore,
           best: newBest
         }),
@@ -140,6 +140,7 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
     await db.runTransaction(async (transaction) => {
       // kinda confusing transactions methods return promises, event.<something>.data() doesn't
       const userDoc = await transaction.get(userRef);
+      const qrDoc = await transaction.get(qrId);
 
       // assume the user exists
       const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
@@ -164,7 +165,7 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
       // update → only works to update
       // set → works to update and create
       await Promise.all(
-        [transaction.set(userRef, {
+        [transaction.update(userRef, {
           totalScore: newTotalScore,
           best: newBest
         }),
