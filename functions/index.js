@@ -27,7 +27,7 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
       const qrDoc = await transaction.get(qrGlobalRef);
 
       // assume the user exists
-      const newTotalScore = userDoc.data().totalScore + scoreDelta;
+      const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
       let isNewHighScore;
       if (userDoc.data().qrId === qrId) {
         // if we change the score, then this high score needs to be changed as well
@@ -79,7 +79,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
       const qrDoc = await transaction.get(qrGlobalRef);
 
       // assume the user exists
-      const newTotalScore = userDoc.data().totalScore + scoreDelta;
+      const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
 
       let newBest = null;
       if (userDoc.data().best.qrId === qrId) {
@@ -140,10 +140,9 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
     await db.runTransaction(async (transaction) => {
       // kinda confusing transactions methods return promises, event.<something>.data() doesn't
       const userDoc = await transaction.get(userRef);
-      const qrDoc = await transaction.get(qrGlobalRef);
 
       // assume the user exists
-      const newTotalScore = userDoc.data().totalScore + scoreDelta;
+      const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
       const isNewHighScore = newScore > userDoc.data()?.best.score || 0;
 
       const newBest = {
