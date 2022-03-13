@@ -140,7 +140,7 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
     await db.runTransaction(async (transaction) => {
       // kinda confusing transactions methods return promises, event.<something>.data() doesn't
       const userDoc = await transaction.get(userRef);
-      const qrDoc = await transaction.get(qrId);
+      const qrDoc = await transaction.get(qrGlobalRef);
 
       // assume the user exists
       const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
