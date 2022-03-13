@@ -143,11 +143,11 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
 
       // assume the user exists
       const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
-      const isNewHighScore = (newScore > userDoc.data()?.best?.score) || 0;
+      const isNewHighScore = newScore > (userDoc.data()?.best?.score || 0);
 
       const newBest = {
         score: isNewHighScore ? newScore : (userDoc.data()?.best?.score || 0),
-        qrId: isNewHighScore ? qrId : userDoc.data()?.best?.qrId
+        qrId: isNewHighScore ? qrId : (userDoc.data()?.best?.qrId || "CF ERROR")
       }
 
       // qrDoc may not exist at this point
