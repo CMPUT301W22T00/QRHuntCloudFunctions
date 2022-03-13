@@ -29,7 +29,13 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
 
       // assume the user exists
       const newTotalScore = userDoc.data().totalScore + scoreDelta;
-      const isNewHighScore = newScore > userDoc.data().best.score;
+      let isNewHighScore;
+      if (userDoc.data().qrId === qrId) {
+        // if we change the score, then this high score needs to be changed as well
+        isNewHighScore = true;
+      } else {
+        isNewHighScore = newScore > userDoc.data().best.score;
+      }
 
       const newBest = {
         score: isNewHighScore ? newScore : await userDoc.data().best.score,
