@@ -14,8 +14,8 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
   .onUpdate(async (event, context) => {
     const {userId, qrId} = context.params;
 
-    const oldScore = event.before.data().score;
-    const newScore = event.after.data().score;
+    const oldScore = event.before.data()?.score || 0;
+    const newScore = event.after.data()?.score || 0;
     const scoreDelta = newScore - oldScore;
 
     const userRef = db.collection("users").doc(userId);
@@ -29,20 +29,20 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
       // assume the user exists
       const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
       let isNewHighScore;
-      if (userDoc.data().qrId === qrId) {
+      if (userDoc.data()?.qrId === qrId) {
         // if we change the score, then this high score needs to be changed as well
         isNewHighScore = true;
       } else {
-        isNewHighScore = newScore > userDoc.data().best.score;
+        isNewHighScore = newScore > userDoc.data()?.best.score || 0;
       }
 
       const newBest = {
-        score: isNewHighScore ? newScore : userDoc.data().best.score,
-        qrId: isNewHighScore ? qrId : userDoc.data().best.qrId
+        score: isNewHighScore ? newScore : userDoc.data()?.best.score || 0,
+        qrId: isNewHighScore ? qrId : userDoc.data()?.best.qrId
       }
 
       // qrDoc may not exist at this point
-      const newNumScanned = (qrDoc?.data().numScanned || 0) + 1;
+      const newNumScanned = (qrDoc.data()?.numScanned || 0) + 1;
 
       functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
         score: newTotalScore,
@@ -53,11 +53,11 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
       // update → only works to update
       // set → works to update and create
       await Promise.all(
-        [transaction.update(userRef, {
+        [transaction.set(userRef, {
           totalScore: newTotalScore,
           best: newBest
         }),
-          transaction.update(qrGlobalRef, {
+          transaction.set(qrGlobalRef, {
             numScanned: newNumScanned
           })]
       )
@@ -82,7 +82,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
       const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
 
       let newBest = null;
-      if (userDoc.data().best.qrId === qrId) {
+      if (userDoc.data()?.best.qrId === qrId) {
         let snapshot = await transaction.get(db.collection("users")
           .doc(userId)
           .collection("qrCodes")
@@ -90,7 +90,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
         if (snapshot.empty) {
           const doc = snapshot.docs[0]
           newBest = {
-            score: doc.data().score || 0,
+            score: doc.data()?.score || 0,
             qrId: doc.id,
           }
         }
@@ -103,7 +103,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
       }
 
       // qrDoc may not exist at this point
-      const newNumScanned = qrDoc.data().numScanned - 1;
+      const newNumScanned = qrDoc.data()?.numScanned - 1;
 
       functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
         score: newTotalScore,
@@ -116,11 +116,11 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
       // update → only works to update
       // set → works to update and create
       await Promise.all(
-        [transaction.update(userRef, {
+        [transaction.set(userRef, {
           totalScore: newTotalScore,
           best: newBest
         }),
-          transaction.update(qrGlobalRef, {
+          transaction.set(qrGlobalRef, {
             numScanned: newNumScanned
           })]
       )
@@ -147,7 +147,7 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
 
       const newBest = {
         score: isNewHighScore ? newScore : userDoc.data()?.best.score,
-        qrId: isNewHighScore ? qrId : userDoc.data().best.qrId
+        qrId: isNewHighScore ? qrId : userDoc.data()?.best?.qrId
       }
 
       // qrDoc may not exist at this point
@@ -164,11 +164,11 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
       // update → only works to update
       // set → works to update and create
       await Promise.all(
-        [transaction.update(userRef, {
+        [transaction.set(userRef, {
           totalScore: newTotalScore,
           best: newBest
         }),
-          transaction.update(qrGlobalRef, {
+          transaction.set(qrGlobalRef, {
             numScanned: newNumScanned
           })]
       )
