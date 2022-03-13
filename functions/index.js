@@ -4,7 +4,7 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
-
+const db = admin.firestore();
 // see also: https://firebase.google.com/docs/functions/database-events#handle_event_data
 
 
@@ -13,7 +13,6 @@ const QR_ENDPOINT = 'users/{userId}/qrCodes/{qrId}';
 exports.updateQr = functions.firestore.document(QR_ENDPOINT)
   .onUpdate(async (event, context) => {
     const {userId, qrId} = context.params;
-    const db = admin.firestore();
 
     const oldScore = event.before.data().score;
     const newScore = event.after.data().score;
@@ -38,20 +37,18 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
       }
 
       const newBest = {
-        score: isNewHighScore ? newScore : await userDoc.data().best.score,
-        qrId: isNewHighScore ? qrId : await userDoc.data().best.qrId
+        score: isNewHighScore ? newScore : userDoc.data().best.score,
+        qrId: isNewHighScore ? qrId : userDoc.data().best.qrId
       }
 
       // qrDoc may not exist at this point
-      const newNumScanned = qrDoc.data().numScanned + 1;
+      const newNumScanned = (qrDoc?.data().numScanned || 0) + 1;
 
       functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
         score: newTotalScore,
         best: newBest
       })}`);
-      functions.logger.log(`Updating ${qrId} with new numScanned : ${JSON.stringify({
-        numScanned: newNumScanned
-      })}`);
+      functions.logger.log(`Updating ${qrId} with new numScanned → ${newNumScanned}`);
 
       // update → only works to update
       // set → works to update and create
@@ -70,7 +67,6 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
 exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
   .onDelete(async (event, context) => {
     const {userId, qrId} = context.params;
-    const db = admin.firestore();
 
     const scoreDelta = -event.data().score;
 
@@ -87,11 +83,10 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
 
       let newBest = null;
       if (userDoc.data().best.qrId === qrId) {
-        let snapshot = await db.collection("users")
+        let snapshot = await transaction.get(db.collection("users")
           .doc(userId)
           .collection("qrCodes")
-          .orderBy("score", "desc")
-          .get()
+          .orderBy("score", "desc"));
         if (snapshot.empty) {
           const doc = snapshot.docs[0]
           newBest = {
@@ -99,10 +94,11 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
             qrId: doc.id,
           }
         }
-      } else {
+      }
+      if (newBest === null) {
         newBest = {
-          score: userDoc.data().best.score,
-          qrId: userDoc.data().best.qrId,
+          score: userDoc.data()?.best.score || 0,
+          qrId: userDoc.data()?.best.qrId,
         }
       }
 
@@ -134,7 +130,6 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
 exports.createQr = functions.firestore.document(QR_ENDPOINT)
   .onCreate(async (event, context) => {
     const {userId, qrId} = context.params;
-    const db = admin.firestore();
 
     const newScore = event.data().score;
     const scoreDelta = newScore;
@@ -149,15 +144,15 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
 
       // assume the user exists
       const newTotalScore = userDoc.data().totalScore + scoreDelta;
-      const isNewHighScore = newScore > userDoc.data().best.score;
+      const isNewHighScore = newScore > userDoc.data()?.best.score || 0;
 
       const newBest = {
-        score: isNewHighScore ? newScore : await userDoc.data().best.score,
-        qrId: isNewHighScore ? qrId : await userDoc.data().best.qrId
+        score: isNewHighScore ? newScore : userDoc.data()?.best.score,
+        qrId: isNewHighScore ? qrId : userDoc.data().best.qrId
       }
 
       // qrDoc may not exist at this point
-      const newNumScanned = (qrDoc.data().numScanned || 0) + 1;
+      const newNumScanned = 1;
 
       functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
         score: newTotalScore,
