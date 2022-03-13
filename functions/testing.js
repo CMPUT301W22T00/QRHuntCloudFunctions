@@ -11,6 +11,9 @@ admin.initializeApp({
 });
 
 db = admin.firestore();
-console.log(await db.collection("users").get("04717e93-d613-46da-99e4-aa97e6fe8793").get())
+(async function() {
+  console.log(await db.collection("users").get("04717e93-d613-46da-99e4-aa97e6fe8793"))
+})()
+
 console.log("loaded 👎")
 
