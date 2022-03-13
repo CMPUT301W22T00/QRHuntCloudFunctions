@@ -33,12 +33,12 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
         // if we change the score, then this high score needs to be changed as well
         isNewHighScore = true;
       } else {
-        isNewHighScore = newScore > userDoc.data()?.best.score || 0;
+        isNewHighScore = newScore > userDoc.data()?.best?.score || 0;
       }
 
       const newBest = {
-        score: isNewHighScore ? newScore : userDoc.data()?.best.score || 0,
-        qrId: isNewHighScore ? qrId : userDoc.data()?.best.qrId
+        score: isNewHighScore ? newScore : userDoc.data()?.best?.score || 0,
+        qrId: isNewHighScore ? qrId : userDoc.data()?.best?.qrId
       }
 
       // qrDoc may not exist at this point
@@ -82,7 +82,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
       const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
 
       let newBest = null;
-      if (userDoc.data()?.best.qrId === qrId) {
+      if (userDoc.data()?.best?.qrId === qrId) {
         let snapshot = await transaction.get(db.collection("users")
           .doc(userId)
           .collection("qrCodes")
@@ -97,8 +97,8 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
       }
       if (newBest === null) {
         newBest = {
-          score: userDoc.data()?.best.score || 0,
-          qrId: userDoc.data()?.best.qrId,
+          score: userDoc.data()?.best?.score || 0,
+          qrId: userDoc.data()?.best?.qrId,
         }
       }
 
@@ -143,10 +143,10 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
 
       // assume the user exists
       const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
-      const isNewHighScore = newScore > userDoc.data()?.best.score || 0;
+      const isNewHighScore = newScore > userDoc.data()?.best?.score || 0;
 
       const newBest = {
-        score: isNewHighScore ? newScore : userDoc.data()?.best.score,
+        score: isNewHighScore ? newScore : userDoc.data()?.best?.score,
         qrId: isNewHighScore ? qrId : userDoc.data()?.best?.qrId
       }
 
