@@ -7,40 +7,69 @@ admin.initializeApp();
 
 // see also: https://firebase.google.com/docs/functions/database-events#handle_event_data
 
-exports.updateCounters = functions.firestore.document('users/{userId}/qrCodes/{qrId}')
-  .onWrite(async (event, context) => {
+
+const QR_ENDPOINT = 'users/{userId}/qrCodes/{qrId}';
+
+exports.updateQr = functions.firestore.document(QR_ENDPOINT)
+  .onUpdate(async (event, context) => {
     const {userId, qrId} = context.params;
     const db = admin.firestore();
 
-    const oldScore = event.before.exists ? event.before.data().score : 0; // if it's an insert, no previous value
-    functions.logger.log(`${userId} with new QR ${qrId} old score: ${oldScore}`);
-    const newScore = event.after.exists ? event.after.data().score : 0; // if it's a delete, no previous value
-    functions.logger.log(`${userId} with new QR ${qrId} new score: ${newScore}`);
+    const oldScore = event.before.data().score;
+    const newScore = event.after.data().score;
     const scoreDelta = newScore - oldScore;
-    functions.logger.log(`${userId} with new QR ${qrId} new score∂: ${scoreDelta}`);
-
-    let numScannedDelta;
-    if (!event.after.exists) {
-      // deletion
-      numScannedDelta = -1;
-    } else if (!event.before.exists) {
-      // add
-      numScannedDelta = 1;
-    } else {
-      // update
-      numScannedDelta = 0;
-    }
-    functions.logger.log(`numScanned ∂: ${numScannedDelta}`);
-
 
     const userRef = db.collection("users").doc(userId);
-    if (userRef.exists) {
-      functions.logger.log(`user ref exists 👍`);
-    }
     const qrGlobalRef = db.collection("qrCodes").doc(qrId);
 
-    functions.logger.log(`fetching doc references for user and qr`);
+    await db.runTransaction(async (transaction) => {
+      // kinda confusing transactions methods return promises, event.<something>.data() doesn't
+      const userDoc = await transaction.get(userRef);
+      const qrDoc = await transaction.get(qrGlobalRef);
 
+      // assume the user exists
+      const newTotalScore = userDoc.data().totalScore + scoreDelta;
+      const isNewHighScore = newScore > userDoc.data().best.score;
+
+      const newBest = {
+        score: isNewHighScore ? newScore : await userDoc.data().best.score,
+        qrId: isNewHighScore ? qrId : await userDoc.data().best.qrId
+      }
+
+      // qrDoc may not exist at this point
+      const newNumScanned = qrDoc.data().numScanned + 1;
+
+      functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
+        score: newTotalScore,
+        best: newBest
+      })}`);
+      functions.logger.log(`Updating ${qrId} with new numScanned : ${JSON.stringify({
+        numScanned: newNumScanned
+      })}`);
+
+      // update → only works to update
+      // set → works to update and create
+      await Promise.all(
+        [transaction.update(userRef, {
+          totalScore: newTotalScore,
+          best: newBest
+        }),
+          transaction.update(qrGlobalRef, {
+            numScanned: newNumScanned
+          })]
+      )
+    });
+  });
+
+exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
+  .onDelete(async (event, context) => {
+    const {userId, qrId} = context.params;
+    const db = admin.firestore();
+
+    const scoreDelta = -event.before.data().score;
+
+    const userRef = db.collection("users").doc(userId);
+    const qrGlobalRef = db.collection("qrCodes").doc(qrId);
 
     await db.runTransaction(async (transaction) => {
       // kinda confusing transactions methods return promises, event.<something>.data() doesn't
@@ -50,8 +79,70 @@ exports.updateCounters = functions.firestore.document('users/{userId}/qrCodes/{q
       // assume the user exists
       const newTotalScore = userDoc.data().totalScore + scoreDelta;
 
-      functions.logger.log(`new total score: ${newTotalScore}`);
+      let newBest = null;
+      if (userDoc.data().best.qrId === qrId) {
+        snapshot = await db.collection("users")
+          .doc(userId)
+          .collection("qrCodes")
+          .orderBy("score", "desc")
+          .get()
+        if (snapshot.empty) {
+          const doc = snapshot.docs[0]
+          newBest = {
+            score: doc.data().score || 0,
+            qrId: doc.id,
+          }
+        }
+      } else {
+        newBest = {
+          score: userDoc.data().best.score,
+          qrId: userDoc.data().best.qrId,
+        }
+      }
 
+      // qrDoc may not exist at this point
+      const newNumScanned = qrDoc.data().numScanned - 1;
+
+      functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
+        score: newTotalScore,
+        best: newBest
+      })}`);
+      functions.logger.log(`Updating ${qrId} with new numScanned : ${JSON.stringify({
+        numScanned: newNumScanned
+      })}`);
+
+      // update → only works to update
+      // set → works to update and create
+      await Promise.all(
+        [transaction.update(userRef, {
+          totalScore: newTotalScore,
+          best: newBest
+        }),
+          transaction.update(qrGlobalRef, {
+            numScanned: newNumScanned
+          })]
+      )
+    });
+  });
+
+exports.createQr = functions.firestore.document(QR_ENDPOINT)
+  .onCreate(async (event, context) => {
+    const {userId, qrId} = context.params;
+    const db = admin.firestore();
+
+    const newScore = event.after.data().score;
+    const scoreDelta = newScore;
+
+    const userRef = db.collection("users").doc(userId);
+    const qrGlobalRef = db.collection("qrCodes").doc(qrId);
+
+    await db.runTransaction(async (transaction) => {
+      // kinda confusing transactions methods return promises, event.<something>.data() doesn't
+      const userDoc = await transaction.get(userRef);
+      const qrDoc = await transaction.get(qrGlobalRef);
+
+      // assume the user exists
+      const newTotalScore = userDoc.data().totalScore + scoreDelta;
       const isNewHighScore = newScore > userDoc.data().best.score;
 
       const newBest = {
@@ -60,29 +151,26 @@ exports.updateCounters = functions.firestore.document('users/{userId}/qrCodes/{q
       }
 
       // qrDoc may not exist at this point
-      // yes, on a deletion where qrGlobalRef doesn't exist, we will be setting numScanned to one
-      // this would be an inconsistent state to be in to be so I don't feel like covering this edge case here
-      const newNumScanned = qrDoc.exists ? qrDoc.data().numScanned + numScannedDelta : 1;
+      const newNumScanned = (qrDoc.data().numScanned || 0) + 1;
 
-      functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${{
+      functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
         score: newTotalScore,
         best: newBest
-      }}`);
-      functions.logger.log(`Updating ${qrId} with new numScanned : ${{
+      })}`);
+      functions.logger.log(`Updating ${qrId} with new numScanned : ${JSON.stringify({
         numScanned: newNumScanned
-      }}`);
+      })}`);
 
       // update → only works to update
       // set → works to update and create
       await Promise.all(
         [transaction.update(userRef, {
-          score: newTotalScore,
+          totalScore: newTotalScore,
           best: newBest
         }),
-          transaction.set(qrGlobalRef, {
+          transaction.update(qrGlobalRef, {
             numScanned: newNumScanned
           })]
       )
-    })
+    });
   });
-
