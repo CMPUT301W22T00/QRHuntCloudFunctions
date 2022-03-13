@@ -48,7 +48,7 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
         score: newTotalScore,
         best: newBest
       })}`);
-      functions.logger.log(`Updating ${qrId} with new numScanned → ${newNumScanned}`);
+      functions.logger.log(`Updating ${qrId} with new numScanned ${qrDoc.data().numScanned} → ${newNumScanned}`);
 
       // update → only works to update
       // set → works to update and create
@@ -151,7 +151,7 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
       }
 
       // qrDoc may not exist at this point
-      const newNumScanned = 1;
+      const newNumScanned = (qrDoc.data()?.numScanned || 0) + 1;
 
       functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
         score: newTotalScore,
