@@ -72,7 +72,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
     const {userId, qrId} = context.params;
     const db = admin.firestore();
 
-    const scoreDelta = -event.before.data().score;
+    const scoreDelta = -event.data().score;
 
     const userRef = db.collection("users").doc(userId);
     const qrGlobalRef = db.collection("qrCodes").doc(qrId);
@@ -87,7 +87,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
 
       let newBest = null;
       if (userDoc.data().best.qrId === qrId) {
-        snapshot = await db.collection("users")
+        let snapshot = await db.collection("users")
           .doc(userId)
           .collection("qrCodes")
           .orderBy("score", "desc")
@@ -136,7 +136,7 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
     const {userId, qrId} = context.params;
     const db = admin.firestore();
 
-    const newScore = event.after.data().score;
+    const newScore = event.data().score;
     const scoreDelta = newScore;
 
     const userRef = db.collection("users").doc(userId);
