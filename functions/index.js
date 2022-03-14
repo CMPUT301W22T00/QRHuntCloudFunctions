@@ -19,7 +19,7 @@ exports.updateQr = functions.firestore.document(QR_ENDPOINT)
     const scoreDelta = newScore - oldScore;
 
     const userRef = db.collection("users").doc(userId);
-    const qrGlobalRef = db.collection("qrCodes").doc(qrId);
+    const qrGlobalRef = db.collection("qrCodesMetadata").doc(qrId);
 
     await db.runTransaction(async (transaction) => {
       // kinda confusing transactions methods return promises, event.<something>.data() doesn't
@@ -71,7 +71,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
     const scoreDelta = -event.data().score;
 
     const userRef = db.collection("users").doc(userId);
-    const qrGlobalRef = db.collection("qrCodes").doc(qrId);
+    const qrGlobalRef = db.collection("qrCodesMetadata").doc(qrId);
 
     await db.runTransaction(async (transaction) => {
       // kinda confusing transactions methods return promises, event.<something>.data() doesn't
@@ -135,7 +135,7 @@ exports.createQr = functions.firestore.document(QR_ENDPOINT)
     const scoreDelta = newScore;
 
     const userRef = db.collection("users").doc(userId);
-    const qrGlobalRef = db.collection("qrCodes").doc(qrId);
+    const qrGlobalRef = db.collection("qrCodesMetadata").doc(qrId);
 
     await db.runTransaction(async (transaction) => {
       // kinda confusing transactions methods return promises, event.<something>.data() doesn't
