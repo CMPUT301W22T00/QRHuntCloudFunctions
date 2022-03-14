@@ -87,7 +87,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
           .doc(userId)
           .collection("qrCodes")
           .orderBy("score", "desc"));
-        if (snapshot.empty) {
+        if (!snapshot.empty) {
           const doc = snapshot.docs[0]
           newBest = {
             score: doc.data()?.score || 0,
@@ -103,7 +103,7 @@ exports.deleteQR = functions.firestore.document(QR_ENDPOINT)
       }
 
       // qrDoc may not exist at this point
-      const newNumScanned = qrDoc.data()?.numScanned - 1;
+      const newNumScanned = (qrDoc.data()?.numScanned || 1) - 1;
 
       functions.logger.log(`Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify({
         score: newTotalScore,
