@@ -1,6 +1,5 @@
 const functions = require("firebase-functions");
 
-// The Firebase Admin SDK to access Firestore.
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -15,7 +14,7 @@ const QR_ENDPOINT = "users/{userId}/qrCodes/{qrId}",
 exports.createQr = functions.firestore
   .document(QR_ENDPOINT)
   .onCreate(async (event, context) => {
-    const { userId, qrId } = context.params;
+    const {userId, qrId} = context.params;
 
     const newScore = event.data().score;
 
@@ -28,9 +27,8 @@ exports.createQr = functions.firestore
       const qrDoc = await transaction.get(qrGlobalRef);
 
       // assume the user exists
-      const newTotalScore = (userDoc.data()?.totalScore || 0) + newScore;
       const isNewHighScore =
-        newScore > (userDoc.data()?.bestScoringQr.score || 0);
+        newScore > (userDoc.data()?.bestScoringQr?.score || 0);
 
       const newBestScoringQr = {
         score: isNewHighScore
@@ -41,17 +39,13 @@ exports.createQr = functions.firestore
           : userDoc.data()?.bestScoringQr?.qrId || "CF ERROR",
       };
 
-      // qrDoc may not exist at this point
-      const newMetadataNumScanned = (qrDoc.data()?.numScanned || 0) + 1;
-      const newUserTotalScanned = (userDoc.data()?.totalScanned || 0) + 1;
-
       const userUpdateInfo = {
-        totalScore: newTotalScore,
-        totalScanned: newUserTotalScanned,
+        totalScore: admin.firestore.FieldValue.increment(newScore),
+        totalScanned: admin.firestore.FieldValue.increment(1),
         bestScoringQr: newBestScoringQr,
       };
       const qrUpdateInfo = {
-        numScanned: newMetadataNumScanned,
+        numScanned: admin.firestore.FieldValue.increment(1),
       };
 
       functions.logger.log(
@@ -75,7 +69,7 @@ exports.createQr = functions.firestore
 exports.deleteQR = functions.firestore
   .document(QR_ENDPOINT)
   .onDelete(async (event, context) => {
-    const { userId, qrId } = context.params;
+    const {userId, qrId} = context.params;
 
     const scoreDelta = -event.data().score;
 
@@ -87,7 +81,6 @@ exports.deleteQR = functions.firestore
       const userDoc = await transaction.get(userRef);
       const qrDoc = await transaction.get(qrGlobalRef);
 
-      const newTotalScore = (userDoc.data()?.totalScore || 0) + scoreDelta;
 
       let newBestScoringQr = null;
       if (userDoc.data()?.bestScoringQr?.qrId === qrId) {
@@ -115,17 +108,17 @@ exports.deleteQR = functions.firestore
       }
 
       // qrDoc may not exist at this point
-      const newMetadataNumscanned = (qrDoc.data()?.numScanned || 1) - 1;
+      const newMetadataNumScanned = (qrDoc.data()?.numScanned || 1) - 1;
       const newUserTotalScanned = (userDoc.data()?.totalScanned || 1) - 1;
 
       const userUpdateInfo = {
-        totalScore: newTotalScore,
-        totalScanned: newUserTotalScanned,
+        totalScore: admin.firestore.FieldValue.increment(scoreDelta),
+        totalScanned: admin.firestore.FieldValue.increment(-1),
         bestScoringQr: newBestScoringQr,
       };
 
       const qrCodesUpdateInfo = {
-        numScanned: newMetadataNumscanned,
+        numScanned: admin.firestore.FieldValue.increment(-1),
       };
 
       functions.logger.log(
