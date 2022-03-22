@@ -1,6 +1,7 @@
 const functions = require("firebase-functions");
 
 const admin = require("firebase-admin");
+const { documentId } = require("firebase/firestore/lite");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -14,7 +15,7 @@ const QR_ENDPOINT = "users/{userId}/qrCodes/{qrId}",
 exports.createQr = functions.firestore
   .document(QR_ENDPOINT)
   .onCreate(async (event, context) => {
-    const {userId, qrId} = context.params;
+    const { userId, qrId } = context.params;
 
     const newScore = event.data().score;
 
@@ -69,7 +70,7 @@ exports.createQr = functions.firestore
 exports.deleteQR = functions.firestore
   .document(QR_ENDPOINT)
   .onDelete(async (event, context) => {
-    const {userId, qrId} = context.params;
+    const { userId, qrId } = context.params;
 
     const scoreDelta = -event.data().score;
 
@@ -80,7 +81,6 @@ exports.deleteQR = functions.firestore
       // kinda confusing transactions methods return promises, event.<something>.data() doesn't
       const userDoc = await transaction.get(userRef);
       const qrDoc = await transaction.get(qrGlobalRef);
-
 
       let newBestScoringQr = null;
       if (userDoc.data()?.bestScoringQr?.qrId === qrId) {
@@ -140,3 +140,65 @@ exports.deleteQR = functions.firestore
       ]);
     });
   });
+
+function findUserWithCode(qrId, score, geoHash) {
+  // We can't just query by document (qr) ID, that would be too simple
+  // https://stackoverflow.com/a/58104104/3427299
+  // instead, we use score and geoHash as a way to narrow down what are options may be,
+  // then iterate over them and find out what the one that matches
+  // maybe a better way to do this would be to store the document I'd in the document - gross either way
+  let cond1;
+  const cond2 = ["score", "==", score];
+  if (!geoHash) {
+    // we can't just look for geohash == null, that query doesn't return results
+    cond1 = ["location", "==", null];
+  } else {
+    cond1 = ["location.geoHash", "==", geoHash];
+  }
+
+  functions.logger.log(`Finding user for qrID ${qrId} `);
+  return db
+    .collectionGroup("qrCodes")
+    .where(...cond1)
+    .where(...cond2)
+    .get()
+    .then((val) => {
+      if (val.empty) {
+        for (const doc of val.docs) {
+          if (doc.ref.id === qrId) {
+            coacheId = doc.ref.path.split("/")[1];
+            const coacheId1 = coacheId;
+            return coacheId1;
+          }
+        }
+      }
+      return null;
+    });
+}
+
+async function getAllUserCodes(userId) {
+  let docsRef = await db
+    .collection(`users/${userId}/qrCodes`)
+    .orderBy("score", "desc")
+    .get();
+  return docsRef.docs;
+}
+
+async function getBestUnique(userId, codes, excludedQrId) {
+  if (!codes || !codes.length) return [];
+  const batches = [];
+  // https://stackoverflow.com/a/66265824
+  while (codes.length) {
+    // firestore limits batches to 10
+    const batch = codes.splice(0, 10);
+    // add the batch request to to a queue
+    await codes = db
+        .collection(QR_METADATA_COL)
+        .where(documentId(), "in", [...batch])
+        .get();
+    if (codes.length === 1) {
+      codes;
+    }
+  }
+  return Promise.all(batches).then((content) => content.flat());
+}
