@@ -75,7 +75,7 @@ async function getBestUniqueSnapshot(qrCodesSnapshot, excludedQrId) {
 async function getBestUniqueForUser(otherUserId) {
     const allQrCodeSnapshots = await getAllUserCodeSnapshots(otherUserId);
     logger.debug(`checking all ${allQrCodeSnapshots.length} QR's from ${otherUserId} of IDs for best unique`);
-    const bestNewUnique = getBestUniqueSnapshot(allQrCodeSnapshots, otherUserId);
+    const bestNewUnique = await getBestUniqueSnapshot(allQrCodeSnapshots, otherUserId);
     if (bestNewUnique) {
         logger.debug(`found new bestNewUnique: ${JSON.stringify(bestNewUnique.data())}`);
         return {

@@ -27,7 +27,7 @@ exports.onDeleteQr = async (event, context) => {
 
         if (curBestUniqueQr?.qrId === outgoingQrId) {
             logger.debug(`cur best is what we are deleting (${outgoingQrId}), updating best unique`);
-            const newBestUniqueQr = getBestUniqueForUser(userId);
+            const newBestUniqueQr = await getBestUniqueForUser(userId);
             curBestUniqueQr = newBestUniqueQr || curBestUniqueQr;
         } else if (((await transaction.get(qrGlobalRef)).data()?.numScanned || 0) === 2) {
             // there's someone else out there that has scanned this QR code
