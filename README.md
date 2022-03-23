@@ -20,8 +20,8 @@ flowchart TB
     create --> id2(numScanned = 0)
     id2 --> t(compare qrId to bestUnique and update if neceesary)
     create --> id3(numScanned = 1)
-    id3 --> id4(get the one other user with with this code)
-    id4 --> id5(get max score from numScanned for all qrCodes\n under the user found\nwhere numScanned == 1)
+    id3 --> id4(get the one other user with with this code - findUserWithCode)
+    id4 --> id5(get max score from numScanned for all qrCodes\n under the user found\nwhere numScanned == 1 - getBestUnique)
     id5 --> t
     create --> id7(numScanned > 1)
     id7 --> _(done)
