@@ -68,7 +68,7 @@ async function getBestUniqueSnapshot(qrCodesSnapshot, excludedQrId) {
       .where(admin.firestore.FieldPath.documentId(), "in", [...batchIds])
       .where("numScanned", "==", 1)
       .get();
-    logger.debug(`found ${qrCodesMetadata.size} results`);
+    logger.debug(`found ${qrCodesMetadata.size}/${batch.length} results for batch`);
     if (qrCodesMetadata.size > 1) {
       return getDataForQrId(
         qrCodesMetadata.docs
@@ -78,7 +78,7 @@ async function getBestUniqueSnapshot(qrCodesSnapshot, excludedQrId) {
               getDataForQrId(b.ref.id, batch).data().score
             );
           })
-          .reverse()[0],
+          .reverse()[0].ref.id,
         batch
       );
     }
@@ -88,7 +88,7 @@ async function getBestUniqueSnapshot(qrCodesSnapshot, excludedQrId) {
 function getDataForQrId(qrId, qrCodes) {
   for (const qrCode of qrCodes) {
     if (qrCode.ref.id === qrId) {
-      return qrCode.data();
+      return qrCode;
     }
   }
 }

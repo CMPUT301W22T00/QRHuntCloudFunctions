@@ -5,7 +5,6 @@ const {
   getAllUserCodes,
   getBestUniqueSnapshot,
   findUserWithCode,
-  getDataForQrId,
 } = require("./utils");
 
 const db = admin.firestore();
@@ -69,7 +68,7 @@ exports.onCreateQr = async (event, context) => {
             logger.debug(`found new bestNewUnique: ${JSON.stringify(bestNewUnique.data())}`);
             newBestUniqueQr = {
               qrId: bestNewUnique.ref.id,
-              score: bestNewUnique
+              score: bestNewUnique.data.score()
             }
           } else {
             logger.warn("failed to find new best unique QR");
