@@ -94,8 +94,8 @@ function getDataForQrId(qrId, qrCodes) {
 }
 
 exports = {
-  getBestUniqueSnapshot: getBestUniqueSnapshot,
-  getScoreFromQrId: getDataForQrId,
+  getBestUniqueSnapshot,
+  getDataForQrId,
   getAllUserCodes,
   findUserWithCode,
 };

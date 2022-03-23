@@ -5,7 +5,7 @@ const {
   getAllUserCodes,
   getBestUniqueSnapshot,
   findUserWithCode,
-  getScoreFromQrId,
+  getDataForQrId,
 } = require("./utils");
 
 const db = admin.firestore();
