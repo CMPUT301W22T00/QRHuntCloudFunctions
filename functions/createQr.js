@@ -39,7 +39,7 @@ exports.onCreateQr = async (event, context) => {
                     score: incomingScore,
                 };
             }
-        } else if (numScanned === 1 && incomingQrId !== curBestUniqueQr.qrId) {
+        } else if (numScanned === 1 && incomingQrId !== curBestUniqueQr?.qrId) {
             // ↑ in theory, we never go to insert something that's already present
             // in practice, that code doesn't exist on the client right now.
             // there's someone else out there, that has scanned this QR code, but now, it won't be unique anymore

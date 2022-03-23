@@ -84,6 +84,7 @@ async function getBestUniqueForUser(otherUserId) {
         };
     }
     logger.warn(`failed to find new best unique QR for ${otherUserId}`);
+    return null;
 }
 
 function getDataForQrId(qrId, qrCodes) {
@@ -95,8 +96,6 @@ function getDataForQrId(qrId, qrCodes) {
 }
 
 module.exports = {
-    getDataForQrId,
     getBestUniqueForUser,
-    getBestUniqueSnapshot,
     findUserRefWithCode,
 };
