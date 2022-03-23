@@ -58,7 +58,7 @@ async function getBestUniqueSnapshot(qrCodesSnapshot, excludedQrId) {
             .get();
         logger.debug(`found ${qrCodesMetadata.size}/${batch.length} results for batch`);
         if (qrCodesMetadata.size > 1) {
-            return this.getDataForQrId(
+            return getDataForQrId(
                 qrCodesMetadata.docs
                     .sort((a, b) => {
                         return (
@@ -73,9 +73,9 @@ async function getBestUniqueSnapshot(qrCodesSnapshot, excludedQrId) {
 }
 
 async function getBestUniqueForUser(otherUserId) {
-    const allQrCodeSnapshots = await this.getAllUserCodeSnapshots(otherUserId);
+    const allQrCodeSnapshots = await getAllUserCodeSnapshots(otherUserId);
     logger.debug(`checking all ${allQrCodeSnapshots.length} QR's from ${otherUserId} of IDs for best unique`);
-    const bestNewUnique = await this.getBestUniqueSnapshot(allQrCodeSnapshots, otherUserId);
+    const bestNewUnique = await getBestUniqueSnapshot(allQrCodeSnapshots, otherUserId);
     if (bestNewUnique) {
         logger.debug(`found new bestNewUnique: ${JSON.stringify(bestNewUnique.data())}`);
         return {
