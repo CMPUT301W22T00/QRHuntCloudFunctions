@@ -35,7 +35,7 @@ exports.onDeleteQr = async (event, context) => {
             const otherUserRef = await findUserRefWithCode(outgoingQrId, outgoingScore, outgoingGeoHash, userId);
             if (otherUserRef) {
                 logger.info(
-                    `other user ${otherUserRef.id} has been affected by ${userId} insertion of ${incomingQrId}`
+                    `other user ${otherUserRef.id} has been affected by ${userId} deletion of ${outgoingQrId}`
                 );
                 const newBestUniqueQr = await getBestUniqueForUser(otherUserRef.id);
                 logger.info(`other user ${otherUserRef.id} new best unique QR: ${JSON.stringify(newBestUniqueQr)}`);

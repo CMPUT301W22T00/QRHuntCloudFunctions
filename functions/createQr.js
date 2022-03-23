@@ -22,12 +22,9 @@ exports.onCreateQr = async (event, context) => {
     const qrGlobalRef = db.collection(QR_METADATA_COL).doc(incomingQrId);
 
     await db.runTransaction(async (transaction) => {
-        // kinda confusing transactions methods return promises, event.<something>.data() doesn't
         const userDoc = await transaction.get(userRef);
         const qrDoc = await transaction.get(qrGlobalRef);
-        // this will hold the user ref and the value to update to if someone else is effected by our operation
-        // for example, if we delete a qr code and that makes someone else's unique, we need to update them to
-        let relatedUserRefAndOperation = null;
+
         const isNewHighScore = incomingScore > (userDoc.data()?.bestScoringQr?.score || 0);
 
         const numScanned = qrDoc.data()?.numScanned || 0;
@@ -53,7 +50,7 @@ exports.onCreateQr = async (event, context) => {
                 );
                 const newBestUniqueQr = await getBestUniqueForUser(otherUserRef.id);
                 logger.info(`other user ${otherUserRef.id} new best unique QR: ${JSON.stringify(newBestUniqueQr)}`);
-                txOps.push(transaction.update(otherUserRef, newBestScoringQr));
+                txOps.push(transaction.update(otherUserRef, newBestUniqueQr));
             } else {
                 logger.warn(`couldn't find the user with this QR code qrId=${incomingQrId} userId=${userId}`);
             }
