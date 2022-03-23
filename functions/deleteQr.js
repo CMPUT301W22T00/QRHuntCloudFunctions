@@ -5,8 +5,6 @@ const { findUserRefWithCode, getBestUniqueForUser } = require("./utils");
 
 const db = admin.firestore();
 
-// see also: https://firebase.google.com/docs/functions/database-events#handle_event_data
-
 const logger = functions.logger;
 const USERS_COL = "users",
     QR_METADATA_COL = "qrCodesMetadata";
@@ -33,9 +31,7 @@ exports.onDeleteQr = async (event, context) => {
             // and after this deletion it will become unique to them
             const otherUserRef = await findUserRefWithCode(outgoingQrId, outgoingScore, outgoingGeoHash, userId);
             if (otherUserRef) {
-                logger.info(
-                    `other user ${otherUserRef.id} has been affected by ${userId} deletion of ${outgoingQrId}`
-                );
+                logger.info(`other user ${otherUserRef.id} has been affected by ${userId} deletion of ${outgoingQrId}`);
                 const newBestUniqueQr = await getBestUniqueForUser(otherUserRef.id);
                 logger.info(`other user ${otherUserRef.id} new best unique QR: ${JSON.stringify(newBestUniqueQr)}`);
                 txOps.push(transaction.update(otherUserRef, newBestUniqueQr));
