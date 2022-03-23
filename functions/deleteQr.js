@@ -45,6 +45,9 @@ exports.onDeleteQr = async (event, context) => {
           score: doc.data()?.score || 0,
           qrId: doc.id,
         };
+      } else {
+        // no more qr codes, there is no best one
+        newBestScoringQr = null;
       }
     }
 
@@ -77,7 +80,7 @@ exports.onDeleteQr = async (event, context) => {
     // set → works to update and create
     return await Promise.all([
       transaction.update(userRef, userUpdateInfo),
-      transaction.set(qrGlobalRef, qrCodesUpdateInfo, {merge: true}),
+      transaction.set(qrGlobalRef, qrCodesUpdateInfo, { merge: true }),
     ]);
   });
 };
