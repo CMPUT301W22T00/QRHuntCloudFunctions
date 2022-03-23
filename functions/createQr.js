@@ -39,7 +39,7 @@ exports.onCreateQr = async (event, context) => {
     logger.debug(`numScanned == ${numScanned} for ${incomingQrId}`);
     if (numScanned === 0) {
       // the qr code is unique, we only need to compare to the users current qr code
-      if ((userDoc.data()?.bestUniqueQr?.score || 0) >= incomingScore) {
+      if (incomingScore > (newBestUniqueQr?.score || 0)) {
         newBestUniqueQr = {
           qrId: incomingQrId,
           score: incomingScore,
