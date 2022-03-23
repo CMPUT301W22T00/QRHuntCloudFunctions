@@ -114,7 +114,7 @@ exports.onCreateQr = async (event, context) => {
     // set → works to update and create
     await Promise.all([
       transaction.update(userRef, userUpdateInfo),
-      transaction.set(qrGlobalRef, qrUpdateInfo),
+      transaction.set(qrGlobalRef, qrUpdateInfo, {merge: true}),
     ]);
   });
 };

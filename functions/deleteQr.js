@@ -77,7 +77,7 @@ exports.onDeleteQr = async (event, context) => {
     // set → works to update and create
     return await Promise.all([
       transaction.update(userRef, userUpdateInfo),
-      transaction.set(qrGlobalRef, qrCodesUpdateInfo),
+      transaction.set(qrGlobalRef, qrCodesUpdateInfo, {merge: true}),
     ]);
   });
 };
