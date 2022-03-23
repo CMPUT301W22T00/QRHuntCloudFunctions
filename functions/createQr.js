@@ -92,8 +92,8 @@ exports.onCreateQr = async (event, context) => {
     const userUpdateInfo = {
       totalScore: admin.firestore.FieldValue.increment(incomingScore),
       totalScanned: admin.firestore.FieldValue.increment(1),
-      bestScoringQr: newBestScoringQr,
-      bestUniqueQr: newBestUniqueQr
+      bestScoringQr: newBestScoringQr || null,
+      bestUniqueQr: newBestUniqueQr || null
     };
     const qrUpdateInfo = {
       numScanned: admin.firestore.FieldValue.increment(1),

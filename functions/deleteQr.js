@@ -61,7 +61,7 @@ exports.onDeleteQr = async (event, context) => {
     const userUpdateInfo = {
       totalScore: admin.firestore.FieldValue.increment(scoreDelta),
       totalScanned: admin.firestore.FieldValue.increment(-1),
-      bestScoringQr: newBestScoringQr,
+      bestScoringQr: newBestScoringQr || null,
     };
 
     const qrCodesUpdateInfo = {
