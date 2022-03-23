@@ -3,7 +3,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const {
   getAllUserCodes,
-  getBestUnique,
+  getBestUniqueSnapshot,
   findUserWithCode,
   getScoreFromQrId,
 } = require("./utils");

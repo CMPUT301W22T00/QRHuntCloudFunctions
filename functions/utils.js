@@ -35,7 +35,10 @@ async function findUserWithCode(qrId, score, geoHash) {
       narrowedQrCodesResp.docs.map((g) => g.data())
     )}`
   );
-  return narrowedQrCodesResp.docs.find((elem) => elem.ref.id === qrId);
+  const foundDoc = narrowedQrCodesResp.docs.find(
+    (elem) => elem.ref.id === qrId
+  );
+  return foundDoc ? foundDoc.ref.parent.id : null;
 }
 
 async function getAllUserCodes(userId) {
@@ -46,14 +49,15 @@ async function getAllUserCodes(userId) {
   return docsRef.docs;
 }
 
-async function getBestUnique(userId, qrCodes, excludedQrId) {
+async function getBestUniqueSnapshot(qrCodesSnapshot, excludedQrId) {
   // https://stackoverflow.com/a/66265824
   // firestore limits batches to 10
-  logger.debug(`Checking batch of IDs for best unique: ${userId}`);
-  qrCodes = qrCodes.filter((code) => code.ref.id !== excludedQrId);
+  qrCodesSnapshot = qrCodesSnapshot.filter(
+    (code) => code.ref.id !== excludedQrId
+  );
 
-  while (qrCodes.length) {
-    const batch = qrCodes.splice(0, 10);
+  while (qrCodesSnapshot.length) {
+    const batch = qrCodesSnapshot.splice(0, 10);
     const batchIds = batch.map((x) => x.ref.id);
     logger.debug(
       `Checking batch of IDs for best unique: ${JSON.stringify(batchIds)}`
@@ -64,31 +68,34 @@ async function getBestUnique(userId, qrCodes, excludedQrId) {
       .where(admin.firestore.FieldPath.documentId(), "in", [...batchIds])
       .where("numScanned", "==", 1)
       .get();
-    if (qrCodesMetadata.size === 1) {
-      return qrCodesMetadata.docs[0].ref.id;
-    } else if (qrCodesMetadata.size > 1) {
-      return qrCodesMetadata.docs
-        .sort((a, b) => {
-          return (
-            getScoreFromQrId(a.ref.id, batch) -
-            getScoreFromQrId(b.ref.id, batch)
-          );
-        })
-        .reverse()[0].ref.id;
+    logger.debug(`found ${qrCodesMetadata.size} results`);
+    if (qrCodesMetadata.size > 1) {
+      return getDataForQrId(
+        qrCodesMetadata.docs
+          .sort((a, b) => {
+            return (
+              getDataForQrId(a.ref.id, batch).data().score -
+              getDataForQrId(b.ref.id, batch).data().score
+            );
+          })
+          .reverse()[0],
+        batch
+      );
     }
   }
 }
 
-function getScoreFromQrId(qrId, qrCodes) {
+function getDataForQrId(qrId, qrCodes) {
   for (const qrCode of qrCodes) {
     if (qrCode.ref.id === qrId) {
-      return qrCode.data().score;
+      return qrCode.data();
     }
   }
-  throw new Error(
-    `Could not find ${qrId} in ${JSON.stringify(qrCodes.map((x) => x.data()))}`
-  );
 }
 
-
-exports = {getBestUnique, getScoreFromQrId, getAllUserCodes, findUserWithCode};
+exports = {
+  getBestUniqueSnapshot: getBestUniqueSnapshot,
+  getScoreFromQrId: getDataForQrId,
+  getAllUserCodes,
+  findUserWithCode,
+};
