@@ -29,7 +29,7 @@ exports.onDeleteQr = async (event, context) => {
     const userDoc = await transaction.get(userRef);
     const qrDoc = await transaction.get(qrGlobalRef);
 
-    let newBestScoringQr = null;
+    let newBestScoringQr = userDoc.data()?.bestScoringQr || null;
     if (userDoc.data()?.bestScoringQr?.qrId === qrId) {
       let snapshot = await transaction.get(
         db
@@ -46,12 +46,6 @@ exports.onDeleteQr = async (event, context) => {
           qrId: doc.id,
         };
       }
-    }
-    if (newBestScoringQr === null) {
-      newBestScoringQr = {
-        score: userDoc.data()?.bestScoringQr?.score || 0,
-        qrId: userDoc.data()?.bestScoringQr?.qrId,
-      };
     }
 
     // qrDoc may not exist at this point
