@@ -1,7 +1,7 @@
 const functions = require("firebase-functions");
 
 const admin = require("firebase-admin");
-const { findUserRefWithCode, getBestUniqueForUser } = require("utils.js");
+const { findUserRefWithCode, getBestUniqueForUser } = require("./utils");
 
 const db = admin.firestore();
 

@@ -1,7 +1,7 @@
 const functions = require("firebase-functions");
 
 const admin = require("firebase-admin");
-const { findUserRefWithCode, getBestUniqueForUser } = require("utils.js");
+const { findUserRefWithCode, getBestUniqueForUser } = require("./utils");
 
 const db = admin.firestore();
 
@@ -78,7 +78,7 @@ exports.onDeleteQr = async (event, context) => {
             numScanned: admin.firestore.FieldValue.increment(-1),
         };
 
-        logger.log(`Updating ${userId} with new QR ${outgoingQrId} new total: ${JSON.stringify(userUpdateInfo)}`);
+        logger.log(`Updating ${userId} with deleted QR ${outgoingQrId} new total: ${JSON.stringify(userUpdateInfo)}`);
         logger.log(`Updating ${outgoingQrId} with new numScanned : ${JSON.stringify(qrCodesUpdateInfo)}`);
 
         // update → only works to update
