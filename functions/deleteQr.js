@@ -1,12 +1,7 @@
 const functions = require("firebase-functions");
 
 const admin = require("firebase-admin");
-const {
-  getAllUserCodes,
-  getBestUniqueSnapshot,
-  findUserWithCode,
-  getDataForQrId,
-} = require("./utils");
+const { findUserRefWithCode, getBestUniqueForUser } = require("./utils");
 
 const db = admin.firestore();
 
@@ -14,73 +9,84 @@ const db = admin.firestore();
 
 const logger = functions.logger;
 const USERS_COL = "users",
-  QR_METADATA_COL = "qrCodesMetadata";
+    QR_METADATA_COL = "qrCodesMetadata";
 
 exports.onDeleteQr = async (event, context) => {
-  const { userId, qrId } = context.params;
+    const { userId, qrId: outgoingQrId } = context.params;
+    const txOps = [];
+    const outgoingScore = event.data().score;
+    const outgoingGeoHash = event.data().location?.geoHash;
 
-  const scoreDelta = -event.data().score;
+    const userRef = db.collection(USERS_COL).doc(userId);
+    const qrGlobalRef = db.collection(QR_METADATA_COL).doc(outgoingQrId);
 
-  const userRef = db.collection(USERS_COL).doc(userId);
-  const qrGlobalRef = db.collection(QR_METADATA_COL).doc(qrId);
+    await db.runTransaction(async (transaction) => {
+        // kinda confusing transactions methods return promises, event.<something>.data() doesn't
+        const userDoc = await transaction.get(userRef);
+        let curBestUniqueQr = userDoc.data()?.bestUniqueQr;
 
-  await db.runTransaction(async (transaction) => {
-    // kinda confusing transactions methods return promises, event.<something>.data() doesn't
-    const userDoc = await transaction.get(userRef);
-    const qrDoc = await transaction.get(qrGlobalRef);
+        if (curBestUniqueQr?.qrId === outgoingQrId) {
+            logger.debug(`cur best is what we are deleting (${outgoingQrId}), updating best unique`);
+            const newBestUniqueQr = getBestUniqueForUser(userId);
+            curBestUniqueQr = newBestUniqueQr || curBestUniqueQr;
+        } else if (((await transaction.get(qrGlobalRef)).data()?.numScanned || 0) === 2) {
+            // there's someone else out there that has scanned this QR code
+            // and after this deletion it will become unique to them
+            const otherUserRef = await findUserRefWithCode(outgoingQrId, outgoingScore, outgoingGeoHash, userId);
+            if (otherUserRef) {
+                logger.info(
+                    `other user ${otherUserRef.id} has been affected by ${userId} insertion of ${incomingQrId}`
+                );
+                const newBestUniqueQr = await getBestUniqueForUser(otherUserRef.id);
+                logger.info(`other user ${otherUserRef.id} new best unique QR: ${JSON.stringify(newBestUniqueQr)}`);
+                txOps.push(transaction.update(otherUserRef, newBestUniqueQr));
+            }
+            logger.warn(`couldn't find the other user with this QR code qrId=${outgoingQrId}`);
+        } else {
+            logger.debug(
+                "no need to update best scoring unique, as this code was not unique " +
+                    "or will not cause any QRs to be unique, " +
+                    "or wasn't the users best unique QR code"
+            );
+        }
 
-    let newBestScoringQr = userDoc.data()?.bestScoringQr || null;
-    if (userDoc.data()?.bestScoringQr?.qrId === qrId) {
-      let snapshot = await transaction.get(
-        db
-          .collection(USERS_COL)
-          .doc(userId)
-          .collection("qrCodes")
-          .orderBy("score", "desc")
-          .limit(1)
-      );
-      if (!snapshot.empty) {
-        const doc = snapshot.docs[0];
-        newBestScoringQr = {
-          score: doc.data()?.score || 0,
-          qrId: doc.id,
+        let newBestScoringQr = userDoc.data()?.bestScoringQr || null;
+        if (userDoc.data()?.bestScoringQr?.qrId === outgoingQrId) {
+            let snapshot = await transaction.get(
+                db.collection(USERS_COL).doc(userId).collection("qrCodes").orderBy("score", "desc").limit(1)
+            );
+            if (!snapshot.empty) {
+                const doc = snapshot.docs[0];
+                newBestScoringQr = {
+                    score: doc.data()?.score || 0,
+                    qrId: doc.id,
+                };
+            } else {
+                // user has no more qr codes, there is no best one
+                newBestScoringQr = null;
+            }
+        }
+
+        const userUpdateInfo = {
+            totalScore: admin.firestore.FieldValue.increment(-outgoingScore),
+            totalScanned: admin.firestore.FieldValue.increment(-1),
+            bestScoringQr: newBestScoringQr || null,
+            bestUniqueQr: curBestUniqueQr || null,
         };
-      } else {
-        // no more qr codes, there is no best one
-        newBestScoringQr = null;
-      }
-    }
 
-    // qrDoc may not exist at this point
-    const newMetadataNumScanned = (qrDoc.data()?.numScanned || 1) - 1;
-    const newUserTotalScanned = (userDoc.data()?.totalScanned || 1) - 1;
+        const qrCodesUpdateInfo = {
+            numScanned: admin.firestore.FieldValue.increment(-1),
+        };
 
-    const userUpdateInfo = {
-      totalScore: admin.firestore.FieldValue.increment(scoreDelta),
-      totalScanned: admin.firestore.FieldValue.increment(-1),
-      bestScoringQr: newBestScoringQr || null,
-    };
+        logger.log(`Updating ${userId} with new QR ${outgoingQrId} new total: ${JSON.stringify(userUpdateInfo)}`);
+        logger.log(`Updating ${outgoingQrId} with new numScanned : ${JSON.stringify(qrCodesUpdateInfo)}`);
 
-    const qrCodesUpdateInfo = {
-      numScanned: admin.firestore.FieldValue.increment(-1),
-    };
-
-    logger.log(
-      `Updating ${userId} with new QR ${qrId} new total: ${JSON.stringify(
-        userUpdateInfo
-      )}`
-    );
-    logger.log(
-      `Updating ${qrId} with new numScanned : ${JSON.stringify(
-        qrCodesUpdateInfo
-      )}`
-    );
-
-    // update → only works to update
-    // set → works to update and create
-    return await Promise.all([
-      transaction.update(userRef, userUpdateInfo),
-      transaction.set(qrGlobalRef, qrCodesUpdateInfo, { merge: true }),
-    ]);
-  });
+        // update → only works to update
+        // set → works to update and create
+        txOps.push(
+            transaction.update(userRef, userUpdateInfo),
+            transaction.set(qrGlobalRef, qrCodesUpdateInfo, { merge: true })
+        );
+        return await Promise.all(txOps);
+    });
 };
