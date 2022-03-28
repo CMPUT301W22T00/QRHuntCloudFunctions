@@ -16,7 +16,7 @@ module.exports.leaderboardRanker = async (ctx) => {
     }
     allUsers.sort((a, b) => (b.data().totalScanned ?? 0) - (a.data().totalScanned ?? 0));
     for (const [idx, uDocs] of allUsers.entries()) {
-        allUsersRanks[uDocs.ref.id].numScanned = idx;
+        allUsersRanksNew[uDocs.ref.id].totalScanned = idx;
     }
     for (const prop in allUsersRanksNew) {
         logger.log(`${prop}: ${JSON.stringify(allUsersRanksNew[prop])}`);
