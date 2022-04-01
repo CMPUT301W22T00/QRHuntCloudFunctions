@@ -3,6 +3,8 @@ const admin = require("firebase-admin");
 const db = admin.firestore();
 const logger = functions.logger;
 
+const QR_METADATA_COL = "qrCodesMetadata";
+
 async function findUserRefWithCode(qrId, score, geoHash, excludedUser) {
     // We can't just query by document (qr) ID, that would be too simple
     // https://stackoverflow.com/a/58104104/3427299
