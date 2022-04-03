@@ -34,7 +34,7 @@ exports.onDeleteQr = async (event, context) => {
                 logger.info(`other user ${otherUserRef.id} has been affected by ${userId} deletion of ${outgoingQrId}`);
                 const newBestUniqueQr = await getBestUniqueForUser(otherUserRef.id);
                 logger.info(`other user ${otherUserRef.id} new best unique QR: ${JSON.stringify(newBestUniqueQr)}`);
-                txOps.push(transaction.update(otherUserRef, newBestUniqueQr));
+                txOps.push(transaction.update(otherUserRef, {"bestUniqueQr": newBestUniqueQr}));
             }
             logger.warn(`couldn't find the other user with this QR code qrId=${outgoingQrId}`);
         } else {

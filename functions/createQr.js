@@ -50,7 +50,7 @@ exports.onCreateQr = async (event, context) => {
                 );
                 const newBestUniqueQr = await getBestUniqueForUser(otherUserRef.id);
                 logger.info(`other user ${otherUserRef.id} new best unique QR: ${JSON.stringify(newBestUniqueQr)}`);
-                txOps.push(transaction.update(otherUserRef, newBestUniqueQr));
+                txOps.push(transaction.update(otherUserRef, {"bestUniqueQr": newBestUniqueQr}));
             } else {
                 logger.warn(`couldn't find the user with this QR code qrId=${incomingQrId} userId=${userId}`);
             }
