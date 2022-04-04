@@ -82,7 +82,7 @@ async function getBestUniqueForUser(otherUserId) {
         logger.debug(`found new bestNewUnique: ${JSON.stringify(bestNewUnique.data())}`);
         return {
             qrId: bestNewUnique.ref.id,
-            score: bestNewUnique.data.score(),
+            score: bestNewUnique.data().score,
         };
     }
     logger.warn(`failed to find new best unique QR for ${otherUserId}`);
